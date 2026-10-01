@@ -1,0 +1,94 @@
+name: Build Shailu Bhai Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Verify source files
+        run: |
+          test -f index.html
+          test -f style.css
+          test -f script.js
+          echo "Source files found successfully."
+
+      - name: Create npm project
+        run: |
+          npm init -y
+
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
+
+      - name: Create Capacitor configuration
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.shailubhai.dailycollection",
+            "appName": "Shailu Bhai",
+            "webDir": ".",
+            "bundledWebRuntime": false
+          }
+          EOF
+
+      - name: Create Android project
+        run: |
+          npx cap add android
+
+      - name: Copy web application
+        run: |
+          npx cap copy android
+
+      - name: Sync Capacitor Android
+        run: |
+          npx cap sync android
+
+      - name: Make Gradle executable
+        run: |
+          chmod +x android/gradlew
+
+      - name: Build Debug APK
+        working-directory: android
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK
+        run: |
+          find android/app/build/outputs/apk -type f -name "*.apk" -print
+          test -n "$(find android/app/build/outputs/apk -type f -name "*.apk" -print -quit)"
+
+      - name: Copy APK to output
+        run: |
+          mkdir -p apk-output
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Shailu-Bhai-Daily-Collection.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shailu-Bhai-Android-APK
+          path: apk-output/Shailu-Bhai-Daily-Collection.apk
+          if-no-files-found: error
