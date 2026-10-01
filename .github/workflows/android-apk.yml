@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout source
         uses: actions/checkout@v4
 
@@ -21,7 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -34,7 +34,7 @@ jobs:
           test -f index.html
           test -f style.css
           test -f script.js
-          echo "Source files found successfully."
+          echo "All 3 source files found."
 
       - name: Create npm project
         run: |
@@ -44,13 +44,20 @@ jobs:
         run: |
           npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
 
+      - name: Create web staging folder
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+          cp style.css www/style.css
+          cp script.js www/script.js
+
       - name: Create Capacitor configuration
         run: |
           cat > capacitor.config.json <<'EOF'
           {
             "appId": "com.shailubhai.dailycollection",
             "appName": "Shailu Bhai",
-            "webDir": ".",
+            "webDir": "www",
             "bundledWebRuntime": false
           }
           EOF
@@ -78,13 +85,15 @@ jobs:
 
       - name: Verify APK
         run: |
+          echo "Checking APK..."
           find android/app/build/outputs/apk -type f -name "*.apk" -print
           test -n "$(find android/app/build/outputs/apk -type f -name "*.apk" -print -quit)"
 
-      - name: Copy APK to output
+      - name: Prepare APK
         run: |
           mkdir -p apk-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Shailu-Bhai-Daily-Collection.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+            apk-output/Shailu-Bhai-Daily-Collection.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
